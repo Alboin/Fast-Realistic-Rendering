@@ -1,0 +1,4 @@
+﻿  main.cpp
+c:\users\albin\documents\github\realtime-rendering-of-massive-models\rrmm\rrmm\main.cpp(189): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+  RRMM.vcxproj -> C:\Users\Albin\Documents\GitHub\Realtime-Rendering-of-Massive-Models\RRMM\Debug\RRMM.exe
+  RRMM.vcxproj -> C:\Users\Albin\Documents\GitHub\Realtime-Rendering-of-Massive-Models\RRMM\Debug\RRMM.pdb (Partial PDB)
