@@ -8,5 +8,5 @@ out vec4 color;
 
 void main()
 {
-	color = texture(cubemap, texCoords);// + vec3(0.2f,0.2f,0.2f);
+	color = texture(cubemap, texCoords);
 }

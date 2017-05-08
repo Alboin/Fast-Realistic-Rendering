@@ -14,13 +14,23 @@ PLYDrawer::PLYDrawer(const PLYModel &ply, GLuint &VBO, GLuint &VAO, GLuint &EBO)
 	{
 		// Vertex positions
 		if (i % 3 == 0)
+		{
 			vboArray.push_back(model.positions[i / 3]);
+		}
 		// Vertex normal, filled with temporary value.
 		else if (i % 3 == 1)
-			vboArray.push_back(vec3(0, 0, 0));
+		{
+			//if (model.ifNormal)
+				//vboArray.push_back(model.normals[i / 3]);
+			//else
+				vboArray.push_back(vec3(0, 0, 0));
+
+		}
 		// Vertex color
 		else
+		{
 			vboArray.push_back(vec3(1, 0.2, 0));
+		}
 
 		//Save smallest/biggest values.
 		if (model.positions[i / 3].x < minPos.x)
@@ -103,6 +113,10 @@ void PLYDrawer::drawPlyModel(GLuint shaderProgramID, GLuint diffuseTexID, GLuint
 
 void PLYDrawer::computeNormals()
 {
+	// If the model already has normals.
+	if (model.ifNormal)
+		return;
+
 	// Calculate several normals for every vertex and add together.
 	for (int i = 0; i < model.faces.size(); i++)
 	{

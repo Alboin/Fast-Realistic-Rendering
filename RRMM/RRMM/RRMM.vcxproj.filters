@@ -30,6 +30,9 @@
     <ClCompile Include="CubeMap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SolidSphere.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shaderLoader.h">
@@ -58,6 +61,12 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="cubemapVert.glsl">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="quadVert.glsl">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="quadFrag.glsl">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

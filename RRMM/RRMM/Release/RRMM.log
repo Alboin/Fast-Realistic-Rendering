@@ -1,14 +1,21 @@
 ﻿C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V140\Microsoft.CppBuild.targets(392,5): warning MSB8028: The intermediate directory (Release\) contains files shared from another project (RRMM.vcxproj).  This can lead to incorrect clean and rebuild behavior.
   main.cpp
-main.cpp(208): warning C4305: '-=': truncation from 'double' to 'float'
-main.cpp(210): warning C4305: '+=': truncation from 'double' to 'float'
-main.cpp(235): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\albin\documents\github\fast-realistic-rendering\rrmm\rrmm\SolidSphere.cpp(31): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+c:\users\albin\documents\github\fast-realistic-rendering\rrmm\rrmm\SolidSphere.cpp(31): warning C4244: 'initializing': conversion from 'double' to 'const float', possible loss of data
+c:\users\albin\documents\github\fast-realistic-rendering\rrmm\rrmm\SolidSphere.cpp(32): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+c:\users\albin\documents\github\fast-realistic-rendering\rrmm\rrmm\SolidSphere.cpp(32): warning C4244: 'initializing': conversion from 'double' to 'const float', possible loss of data
+c:\users\albin\documents\github\fast-realistic-rendering\rrmm\rrmm\SolidSphere.cpp(35): warning C4305: 'initializing': truncation from 'double' to 'float'
+c:\users\albin\documents\github\fast-realistic-rendering\rrmm\rrmm\SolidSphere.cpp(43): warning C4018: '<': signed/unsigned mismatch
+c:\users\albin\documents\github\fast-realistic-rendering\rrmm\rrmm\SolidSphere.cpp(57): warning C4018: '<': signed/unsigned mismatch
+c:\users\albin\documents\github\fast-realistic-rendering\rrmm\rrmm\SolidSphere.cpp(68): warning C4018: '<': signed/unsigned mismatch
+c:\users\albin\documents\github\fast-realistic-rendering\rrmm\rrmm\SolidSphere.cpp(75): warning C4018: '<': signed/unsigned mismatch
+main.cpp(366): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
 LINK : warning LNK4098: defaultlib 'LIBCMT' conflicts with use of other libs; use /NODEFAULTLIB:library
 LINK : warning LNK4098: defaultlib 'MSVCRTD' conflicts with use of other libs; use /NODEFAULTLIB:library
   Generating code
-  1 of 777 functions ( 0.1%) were compiled, the rest were copied from previous compilation.
-    0 functions were new in current compilation
-    14 functions had inline decision re-evaluated but remain unchanged
+  23 of 932 functions ( 2.5%) were compiled, the rest were copied from previous compilation.
+    13 functions were new in current compilation
+    25 functions had inline decision re-evaluated but remain unchanged
   Finished generating code
 shaderLoader.obj : warning LNK4049: locally defined symbol ___glewLinkProgram imported
 shaderLoader.obj : warning LNK4049: locally defined symbol ___glewDeleteShader imported

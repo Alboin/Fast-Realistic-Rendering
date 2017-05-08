@@ -16,6 +16,7 @@
 #include "plyloader.h"
 #include "PLYDrawer.h"
 #include "CubeMap.h"
+#include "SolidSphere.cpp"
 
 using namespace glm;
 using namespace std;
@@ -26,7 +27,9 @@ bool leftMousePressed = false;
 double mouseX, mouseY;
 int roughness = 0;
 int maxRoughness = 6;
-float fresnel = 0.4f;
+float fresnelR = 0.4f, fresnelG = 0.4f, fresnelB = 0.4f;
+int reflection = 0;
+bool drawSphere = false;
 
 // Global variables for the fps-counter
 double t0 = 0.0;
@@ -49,6 +52,9 @@ int main()
 
 	//Starting position of camera
 	view = lookAt(vec3(0.0f, 0.0f, 2.0f), vec3(0, 0, 0), vec3(0, 1, 0));
+	//Projection matrix
+	glm::mat4 projection;
+	projection = glm::perspective(45.0f, (float)windowWidth / (float)windowHeight, 0.1f, 100.0f);
 
 	//Initiate glfw
 	glfwInit();
@@ -59,7 +65,7 @@ int main()
 
 
 	//Try to create a window
-	GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "RRMM", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "FRR", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -82,11 +88,11 @@ int main()
 
 	glViewport(0, 0, width, height);
 
-	glEnable(GL_DEPTH_TEST);
 
 	// Create and compile the GLSL program from the shaders
 	GLuint shaderProgramID = LoadShaders("vertexshader.glsl", "fragmentshader.glsl");
 	GLuint skyboxShaderID = LoadShaders("cubemapVert.glsl", "cubemapFrag.glsl");
+	GLuint quadShaderID = LoadShaders("quadVert.glsl", "quadFrag.glsl");
 
 	//Register external intpu in GLFW
 	glfwSetKeyCallback(window, key_callback);
@@ -101,11 +107,69 @@ int main()
 	GLuint VBO, VAO, EBO;
 	PLYDrawer mesh(plymodel, VBO, VAO, EBO);
 
+	GLuint VBO_sphere, VAO_sphere, EBO_sphere;
+	SolidSphere sphere(0.5f, 100, 100, VBO_sphere, VAO_sphere, EBO_sphere);
+
 	//Create cubemap
 	GLuint VBO_map, VAO_map, EBO_map;
 	CubeMap skybox(VBO_map, VAO_map, EBO_map, maxRoughness);
 
-	vec3 lightPos(0.0f, 15.0f, 10.0f);
+	//Create framebuffer
+	GLuint FBO;
+	glGenFramebuffers(1, &FBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+
+	//Create a texture for the framebuffer
+	GLuint framebufferTexture;
+	glGenTextures(1, &framebufferTexture);
+	glBindTexture(GL_TEXTURE_2D, framebufferTexture);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	//Attach texture to framebuffer
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, framebufferTexture, 0);
+
+	//Check that the framebuffer is ok
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		cout << "ERROR: Framebuffer is not complete!" << endl;
+
+	#pragma region Create quad to render final image to.
+	//Create quad to render final image to.
+	GLfloat quadVertices[] = {
+		// Positions   // TexCoords
+		-1.0f,  1.0f,  0.0f, 1.0f,
+		-1.0f, -1.0f,  0.0f, 0.0f,
+		1.0f, -1.0f,  1.0f, 0.0f,
+
+		-1.0f,  1.0f,  0.0f, 1.0f,
+		1.0f, -1.0f,  1.0f, 0.0f,
+		1.0f,  1.0f,  1.0f, 1.0f
+	};
+
+	GLuint VAO_quad, VBO_quad;
+	glGenVertexArrays(1, &VAO_quad);
+	glGenBuffers(1, &VBO_quad);
+	glBindVertexArray(VAO_quad);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO_quad);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+	//Vertex position attribute
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
+	//Texture coordinate attribute
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2*sizeof(GLfloat)));
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+	#pragma endregion
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -114,20 +178,26 @@ int main()
 		//Update mouse position
 		glfwGetCursorPos(window, &mouseX, &mouseY);
 
+		//Draw to framebuffer
+		glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+
 		//Rendering commands here
 		glClearColor(0.4f, 0.4f, 0.4f, 1.0f);
+		glEnable(GL_DEPTH_TEST);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-		//RENDERING MESH HERE
-		mesh.drawPlyModel(shaderProgramID, skybox.textures[maxRoughness], skybox.textures[roughness + 1]);
+		//Use the mesh-shader.
+		glUseProgram(shaderProgramID);
 
 		#pragma region MVP-matrixes for mesh
-		glm::mat4 model = glm::scale(mat4(1.0f), vec3(1/mesh.height, 1/mesh.height, 1/mesh.height));
+		glm::mat4 model = mat4(1.0f);
+		if (!drawSphere)
+			//"Normalize" the model scale.
+			model = glm::scale(mat4(1.0f), vec3(1/mesh.height, 1/mesh.height, 1/mesh.height));
 		//Center the model at origo.
 		model = glm::translate(model, vec3(0, -mesh.height/2 - mesh.minPos.y, 0));
-		glm::mat4 projection;
-		projection = glm::perspective(45.0f, (float)windowWidth / (float)windowHeight, 0.1f, 100.0f);
+
 		vec3 cameraPos = (inverse(view))[3];
 		#pragma endregion
 
@@ -139,22 +209,31 @@ int main()
 		glUniformMatrix4fv(modeltransLoc1, 1, GL_FALSE, glm::value_ptr(model));
 		GLuint projectiontransLoc1 = glGetUniformLocation(shaderProgramID, "projectionMesh");
 		glUniformMatrix4fv(projectiontransLoc1, 1, GL_FALSE, glm::value_ptr(projection));
-		//GLint lightPosLoc1 = glGetUniformLocation(shaderProgramID, "lightPos");
-		//glUniform3f(lightPosLoc1, lightPos.x, lightPos.y, lightPos.z);
-		GLint fresnelLoc = glGetUniformLocation(shaderProgramID, "fresnel");
-		glUniform1f(fresnelLoc, fresnel);
+		GLint fresnelRLoc = glGetUniformLocation(shaderProgramID, "fresnelR");
+		glUniform1f(fresnelRLoc, fresnelR);
+		GLint fresnelGLoc = glGetUniformLocation(shaderProgramID, "fresnelG");
+		glUniform1f(fresnelGLoc, fresnelG);
+		GLint fresnelBLoc = glGetUniformLocation(shaderProgramID, "fresnelB");
+		glUniform1f(fresnelBLoc, fresnelB);
+		GLint reflectionLoc = glGetUniformLocation(shaderProgramID, "reflection");
+		glUniform1i(reflectionLoc, reflection);
 		GLint cameraPosLoc1 = glGetUniformLocation(shaderProgramID, "cameraPos");
 		glUniform3f(cameraPosLoc1, cameraPos.x, cameraPos.y, cameraPos.z);
 		#pragma endregion
 
-		//RENDERING SKYBOX HERE
-		skybox.drawCubeMap(skyboxShaderID);
+		//RENDERING MESH HERE
+		if (drawSphere)
+			sphere.drawSphere(shaderProgramID, skybox.textures[maxRoughness], skybox.textures[roughness + 1]);
+		else
+			mesh.drawPlyModel(shaderProgramID, skybox.textures[maxRoughness], skybox.textures[roughness + 1]);
+
+
+		//Use the skybox-shader.
+		glUseProgram(skyboxShaderID);
 
 		#pragma region model-matrix for cube
-		//glm::mat4 cubeModel(1.0f);
 		glm::mat4 cubeModel = glm::scale(mat4(1.0f), vec3(10.0f));
-		//vec3 camerapos = inverse(view)[3];
-		//cubeModel = translate(cubeModel, camerapos);
+		cubeModel = rotate(cubeModel, 3.14f / 2.0f, vec3(0, 1, 0));
 		mat4 cubeView = mat4(mat3(view));
 		#pragma endregion
 
@@ -168,6 +247,26 @@ int main()
 		glUniformMatrix4fv(projectiontransLoc2, 1, GL_FALSE, glm::value_ptr(projection));
 		#pragma endregion
 
+		//RENDERING SKYBOX HERE
+		skybox.drawCubeMap(skyboxShaderID);
+
+
+
+		//Draw to quad.
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glClear(GL_COLOR_BUFFER_BIT);
+		glClearColor(0.4f, 0.4f, 0.4f, 1.0f);
+
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+		glUseProgram(quadShaderID);
+		glBindVertexArray(VAO_quad);
+		glDisable(GL_DEPTH_TEST);
+		glBindTexture(GL_TEXTURE_2D, framebufferTexture);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glBindVertexArray(0);
+
+
 
 		//Swap the buffers
 		glfwSwapBuffers(window);
@@ -179,7 +278,7 @@ int main()
 		if ((t - t0) > 1.0 || frames == 0)
 		{
 			double fps = (double)frames / (t - t0);
-			sprintf(titlestring, "RRMM (%.1f fps)", fps);
+			sprintf(titlestring, "FRR (%.1f fps)", fps);
 			glfwSetWindowTitle(window, titlestring);
 			t0 = t;
 			frames = 0;
@@ -204,10 +303,42 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		roughness--;
 
 	//By pressing W/E the user can decrease/increase the fresnel constant
-	if (key == GLFW_KEY_W && action == GLFW_PRESS)
-		fresnel -= 0.05;
-	else if (key == GLFW_KEY_E && action == GLFW_PRESS)
-		fresnel += 0.05;
+	if (key == GLFW_KEY_W)
+	{
+		fresnelR -= 0.1f;
+		fresnelG -= 0.1f;
+		fresnelB -= 0.1f;
+	}
+	else if (key == GLFW_KEY_E)
+	{
+		fresnelR += 0.1f;
+		fresnelG += 0.1f;
+		fresnelB += 0.1f;
+	}
+	//The following keys decrease/increase the separate fresnel constants for R, G and B.
+	if (key == GLFW_KEY_F)
+		fresnelR -= 0.1f;
+	else if (key == GLFW_KEY_R)
+		fresnelR += 0.1f;
+	if (key == GLFW_KEY_G)
+		fresnelG -= 0.1f;
+	else if (key == GLFW_KEY_T)
+		fresnelG += 0.1f;
+	if (key == GLFW_KEY_H)
+		fresnelB -= 0.1f;
+	else if (key == GLFW_KEY_Y)
+		fresnelB += 0.1f;
+
+	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+		if (reflection == 1)
+			reflection = 0;
+		else
+			reflection = 1;
+	if (key == GLFW_KEY_ENTER && action == GLFW_PRESS)
+		if (drawSphere)
+			drawSphere = false;
+		else
+			drawSphere = true;
 
 }
 

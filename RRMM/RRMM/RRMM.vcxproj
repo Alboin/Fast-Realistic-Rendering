@@ -129,6 +129,7 @@
     <ClCompile Include="PLYDrawer.cpp" />
     <ClCompile Include="plyloader.cpp" />
     <ClCompile Include="shaderLoader.cpp" />
+    <ClCompile Include="SolidSphere.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CubeMap.h" />
@@ -141,6 +142,8 @@
     <None Include="cubemapVert.glsl" />
     <None Include="fragmentshader.glsl" />
     <None Include="fragmentshaderCubeMap.glsl" />
+    <None Include="quadFrag.glsl" />
+    <None Include="quadVert.glsl" />
     <None Include="vertexshader.glsl" />
     <None Include="vertexshaderCubeMap.glsl" />
   </ItemGroup>

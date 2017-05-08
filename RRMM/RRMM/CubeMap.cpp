@@ -84,6 +84,8 @@ void CubeMap::drawCubeMap(GLuint shaderProgramID)
 	glBindVertexArray(copyVAO);
 	glDrawElements(GL_TRIANGLES, sizeof(ivec3)*indexes.size(), GL_UNSIGNED_INT, 0);
 	glDepthMask(GL_TRUE);
+
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 	glBindVertexArray(0);
 }
 
