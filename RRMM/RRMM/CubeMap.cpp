@@ -71,8 +71,7 @@ void CubeMap::createVBO(GLuint &VBO, GLuint &VAO, GLuint &EBO)
 
 void CubeMap::drawCubeMap(GLuint shaderProgramID)
 {
-	glDepthMask(GL_FALSE);
-	glUseProgram(shaderProgramID);
+	//glDepthMask(GL_FALSE);
 	glBindBuffer(GL_ARRAY_BUFFER, copyVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3)*vertices.size(), &vertices[0], GL_STATIC_DRAW);
 
@@ -83,7 +82,7 @@ void CubeMap::drawCubeMap(GLuint shaderProgramID)
 	glBindTexture(GL_TEXTURE_CUBE_MAP, textures[0]);
 	glBindVertexArray(copyVAO);
 	glDrawElements(GL_TRIANGLES, sizeof(ivec3)*indexes.size(), GL_UNSIGNED_INT, 0);
-	glDepthMask(GL_TRUE);
+	//glDepthMask(GL_TRUE);
 
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 	glBindVertexArray(0);

@@ -90,24 +90,24 @@ void PLYDrawer::drawPlyModel(GLuint shaderProgramID, GLuint diffuseTexID, GLuint
 {
 	glBindBuffer(GL_ARRAY_BUFFER, copyVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3)*vboArray.size(), &vboArray[0], GL_STATIC_DRAW);
-	glUseProgram(shaderProgramID);
+
+	//GLuint tex0 = glGetUniformLocation(shaderProgramID, "diffuseCube");
+	//glUniform1i(tex0, 0);
+	//GLuint tex1 = glGetUniformLocation(shaderProgramID, "specularCube");
+	//glUniform1i(tex1, 1);
+
+	//glActiveTexture(GL_TEXTURE0);
+	//glBindTexture(GL_TEXTURE_CUBE_MAP, diffuseTexID);
+	//glEnable(GL_TEXTURE_CUBE_MAP);
+	//glActiveTexture(GL_TEXTURE1);
+	//glEnable(GL_TEXTURE_CUBE_MAP);
+	//glBindTexture(GL_TEXTURE_CUBE_MAP, specularTexID);
+
 	glBindVertexArray(copyVAO);
-
-	GLuint tex0 = glGetUniformLocation(shaderProgramID, "diffuseCube");
-	glUniform1i(tex0, 0);
-	GLuint tex1 = glGetUniformLocation(shaderProgramID, "specularCube");
-	glUniform1i(tex1, 1);
-
-	glActiveTexture(GL_TEXTURE0);
-	glEnable(GL_TEXTURE_CUBE_MAP);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, diffuseTexID);
-	glActiveTexture(GL_TEXTURE1);
-	glEnable(GL_TEXTURE_CUBE_MAP);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, specularTexID);
 
 	glDrawElements(GL_TRIANGLES, sizeof(ivec3)*model.faceCount, GL_UNSIGNED_INT, 0);
 	glBindVertexArray(0);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+	//glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 
 }
 

@@ -125,6 +125,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CubeMap.cpp" />
+    <ClCompile Include="Framebuffer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="PLYDrawer.cpp" />
     <ClCompile Include="plyloader.cpp" />
@@ -133,6 +134,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CubeMap.h" />
+    <ClInclude Include="Framebuffer.h" />
     <ClInclude Include="PLYDrawer.h" />
     <ClInclude Include="plyloader.h" />
     <ClInclude Include="shaderLoader.h" />

@@ -109,11 +109,10 @@ public:
 		copyEBO = EBO;
 	}
 
-	void drawSphere(GLuint shaderProgramID, GLuint diffuseTexID, GLuint specularTexID)
+	void drawSphere(const GLuint& shaderProgramID, const GLuint&  diffuseTexID, const GLuint&  specularTexID)
 	{
 		glBindBuffer(GL_ARRAY_BUFFER, copyVBO);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3)*vboArray.size(), &vboArray[0], GL_STATIC_DRAW);
-		glUseProgram(shaderProgramID);
 		glBindVertexArray(copyVAO);
 
 		GLuint tex0 = glGetUniformLocation(shaderProgramID, "diffuseCube");

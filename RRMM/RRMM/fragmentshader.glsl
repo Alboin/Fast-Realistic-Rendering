@@ -25,14 +25,20 @@ void main()
 	//float z =  gl_FragCoord.z * 2.0f - 1.0f;
 	//float linearDepth = (2.0 * near * far) / (far + near - z * (far - near));
 
+	//compute a normal without interpolation (as in flat shading).
+	vec3 normal = normalize(cross(dFdx(fragPos), dFdy(fragPos)));
+
 	vec4 temp = viewMesh * modelMesh * vec4(fragPos, 1.0f);
 
-
+	//TODO: Remove "*100.0f", its only temporary!
 	float linearDepth = (temp.z - near)/(far - near) * 100.0f;
 
 	//color = vec4(vec3(linearDepth), 1.0f);
 	//color = vec4(vec3(vertexNormal.x, vertexNormal.y, vertexNormal.z), 1.0f);
-	color = vec4(vec3(vertexNormal.x, vertexNormal.y, vertexNormal.z), 1.0f) + vec4(vec3(linearDepth), 1.0f);
+	//color = vec4(vec3(vertexNormal.x, vertexNormal.y, vertexNormal.z), 1.0f) + vec4(vec3(linearDepth), 1.0f);	
+
+	// Using the normal without interpolation.
+	color = vec4(vec3(normal.x, normal.y, normal.z), 1.0f) + vec4(vec3(linearDepth), 1.0f);
 	return;	
 
 	if(reflection != 1)
