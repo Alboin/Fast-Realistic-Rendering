@@ -32,12 +32,12 @@ using namespace std;
 glm::mat4 view;
 glm::mat4 model = mat4(1.0f);
 vec3 rotatedX = vec3(1, 0, 0);
-int sampleRadius = 200;
+int sampleRadius = 1;
 float nSamples = 10;
 int blurRadius = 3;
 int blurSamples = 4;
 int enableBlur = 0;
-int randomize = 1;
+int randomize = 0;
 glm::mat4 projection;
 GLuint shaderProgramID;
 GLuint skyboxShaderID;
@@ -129,7 +129,7 @@ int main()
 	#pragma endregion
 
 	//Load ply-model
-	PLYModel plymodel("models/Armadillo.ply", false, false);
+	PLYModel plymodel("models/Bunny.ply", false, false);
 
 	GLuint VBO, VAO, EBO;
 	mesh = new PLYDrawer(plymodel, VBO, VAO, EBO);
@@ -200,6 +200,7 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
+		#pragma region Ambient Occlusion uniforms
 		glUseProgram(quadShaderID);
 		vec3 cameraPos = (inverse(view))[3];
 		GLuint radiusLoc = glGetUniformLocation(quadShaderID, "radiusPixels");
@@ -214,6 +215,7 @@ int main()
 		glUniformMatrix4fv(viewtransLoc2, 1, GL_FALSE, glm::value_ptr(view));
 		GLuint projectiontransLoc2 = glGetUniformLocation(quadShaderID, "perspective");
 		glUniformMatrix4fv(projectiontransLoc2, 1, GL_FALSE, glm::value_ptr(projection));
+		#pragma endregion
 
 		//Draw to quad.
 		framebuffer.drawToQuad(quadShaderID);
@@ -225,6 +227,7 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
+		#pragma region Blur uniforms
 		glUseProgram(blurShaderID);
 		GLuint radiusBlurLoc = glGetUniformLocation(blurShaderID, "blurRadius");
 		glUniform1i(radiusBlurLoc, blurRadius);
@@ -232,7 +235,7 @@ int main()
 		glUniform1f(samplesBlurLoc, blurSamples);
 		GLuint blurEnableLoc = glGetUniformLocation(blurShaderID, "enableBlur");
 		glUniform1i(blurEnableLoc, enableBlur);
-
+		#pragma endregion
 
 		framebufferBlur.drawToQuad(blurShaderID);
 

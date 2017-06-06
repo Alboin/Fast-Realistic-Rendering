@@ -31,11 +31,11 @@ void main()
 	//return;
 	
 	// Set the background color to white.
-	if(depth > 0.99f)
-	{
-		color = vec4(1.0f);
-		return;
-	}
+	//if(depth > 0.99f)
+	//{
+	//	color = vec4(1.0f);
+	//	return;
+	//}
 	
 	// Initiate sampling vectors.
 	vec2[4] sampleVectors;
@@ -98,7 +98,7 @@ void main()
 		//	horizontalVec = startPoint;
 
 		//float horizontalAngle = atan(length(horizontalVec.z) / length(horizontalVec.xy));
-		float horizontalAngle = acos(dot(horizontalVec, vec3(horizontalVec.xy, 0.0f)));
+		float horizontalAngle = acos(dot(normalize(horizontalVec), normalize(vec3(horizontalVec.xy, 0.0f))));
 		// The horizontal angle should be signed.
 		if(horizontalVec.z < 0)
 			horizontalAngle = -horizontalAngle;
@@ -120,17 +120,19 @@ void main()
 		float tangentialAngle = acos(dot(alignedNormal, normalize(cameraInScreenspace)));
 
 		
-		ambientOcclusion += (1.0f / (2*3.14)) * (sin(horizontalAngle) - sin(tangentialAngle)) * sampleWeight;
+		//ambientOcclusion += (1.0f / (2*3.14)) * (sin(horizontalAngle) - sin(tangentialAngle)) * sampleWeight;
+		horizontalAngle = max(horizontalAngle, 0);
+		ambientOcclusion += (sin(horizontalAngle) - sin(0)) * sampleWeight;
 
 	}
 
-	ambientOcclusion = ambientOcclusion;
+	//ambientOcclusion = ambientOcclusion;
 
-	color = vec4(vec3(ambientOcclusion * 2 + 0.3f), 1.0f);
+	color = vec4(vec3(ambientOcclusion * 100 + 0.3f), 1.0f);
 	
-	//DEBUG
-	if(ambientOcclusion < 0)
-		color = vec4(vec3(1.0f, 0.0f, 0.0f), 1.0f);
+	////DEBUG
+	//if(ambientOcclusion < 0)
+	//	color = vec4(vec3(1.0f, 0.0f, 0.0f), 1.0f);
 }
 
 // Function for creating a rotation matrix for rotation around a given axis and angle.
