@@ -140,6 +140,7 @@
     <ClInclude Include="shaderLoader.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="blurshader.glsl" />
     <None Include="cubemapFrag.glsl" />
     <None Include="cubemapVert.glsl" />
     <None Include="fragmentshader.glsl" />

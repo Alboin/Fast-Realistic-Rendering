@@ -24,6 +24,7 @@ public:
 	vec3 maxPos;
 private:
 	vector<vec3> vboArray;
+	vector<ivec3> indices;
 	PLYModel model;
 
 	GLuint copyVBO, copyVAO, copyEBO;

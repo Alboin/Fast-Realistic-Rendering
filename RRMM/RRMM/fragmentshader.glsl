@@ -2,6 +2,7 @@
 
 in vec3 vertexNormal;
 in vec3 fragPos;
+in vec4 gl_FragCoord;
 
 out vec4 color;
 
@@ -20,7 +21,7 @@ uniform samplerCube specularCube;
 void main()
 {
 	float near = 0.1f;
-	float far = 100.0f;
+	float far = 5.0f;
 
 	//float z =  gl_FragCoord.z * 2.0f - 1.0f;
 	//float linearDepth = (2.0 * near * far) / (far + near - z * (far - near));
@@ -28,17 +29,31 @@ void main()
 	//compute a normal without interpolation (as in flat shading).
 	vec3 normal = normalize(cross(dFdx(fragPos), dFdy(fragPos)));
 
+	//vec3 a = normalize(cameraPos) * dot(normal, normalize(cameraPos));
+	//vec3 b = normal - a;
+	//normal = normalize(vec3(0,0,1) + b);
+
 	vec4 temp = viewMesh * modelMesh * vec4(fragPos, 1.0f);
+	//vec4 temp = viewMesh * modelMesh * gl_FragCoord;
+
+	//float z = (2 * near) / (far + near - texture2D( texture0, texCoord ).x * (far - near));
+	float z = (2 * near) / (far + near - gl_FragCoord.z * (far - near));
 
 	//TODO: Remove "*100.0f", its only temporary!
-	float linearDepth = (temp.z - near)/(far - near) * 100.0f;
+	//float linearDepth = (temp.z - near)/(far - near) * 50.0f;
+	float linearDepth = (temp.z - near)/(far - near);
+	color = vec4(normal, z);
+
+	//// DEBUG: Diffuse lighting
+	//float diffuse = dot(normal, normalize(cameraPos));
+	//color = vec4( vec3(1.0f * diffuse), 1.0f);
 
 	//color = vec4(vec3(linearDepth), 1.0f);
 	//color = vec4(vec3(vertexNormal.x, vertexNormal.y, vertexNormal.z), 1.0f);
 	//color = vec4(vec3(vertexNormal.x, vertexNormal.y, vertexNormal.z), 1.0f) + vec4(vec3(linearDepth), 1.0f);	
 
 	// Using the normal without interpolation.
-	color = vec4(vec3(normal.x, normal.y, normal.z), 1.0f) + vec4(vec3(linearDepth), 1.0f);
+	//color = vec4(vec3(normal.x, normal.y, normal.z), 1.0f) + vec4(vec3(linearDepth), 1.0f);
 	return;	
 
 	if(reflection != 1)

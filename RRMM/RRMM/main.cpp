@@ -6,6 +6,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <SOIL/src/SOIL.h>
 
@@ -29,10 +30,19 @@ using namespace std;
 #pragma region Global variables.
 // Global variables for rendering
 glm::mat4 view;
+glm::mat4 model = mat4(1.0f);
+vec3 rotatedX = vec3(1, 0, 0);
+int sampleRadius = 200;
+float nSamples = 10;
+int blurRadius = 3;
+int blurSamples = 4;
+int enableBlur = 0;
+int randomize = 1;
 glm::mat4 projection;
 GLuint shaderProgramID;
 GLuint skyboxShaderID;
 GLuint quadShaderID;
+GLuint blurShaderID;
 PLYDrawer *mesh;
 
 // Global variables for controls
@@ -40,7 +50,6 @@ bool leftMousePressed = false;
 double mouseX, mouseY;
 int roughness = 0;
 int maxRoughness = 6;
-float fresnelR = 0.4f, fresnelG = 0.4f, fresnelB = 0.4f;
 int reflection = 0;
 bool drawSphere = false;
 int wireframe = 0;
@@ -65,13 +74,13 @@ int main()
 {
 
 	#pragma region initiation
-	int windowWidth = 1200;
-	int windowHeight = 800;
+	int windowWidth = 1000;
+	int windowHeight = 1000;
 
 	//Starting position of camera
 	view = lookAt(vec3(0.0f, 0.0f, 2.0f), vec3(0, 0, 0), vec3(0, 1, 0));
 	//Projection matrix
-	projection = glm::perspective(45.0f, (float)windowWidth / (float)windowHeight, 0.1f, 100.0f);
+	projection = glm::perspective(45.0f, (float)windowWidth / (float)windowHeight, 0.1f, 5.0f);
 
 	//Initiate glfw
 	glfwInit();
@@ -110,6 +119,7 @@ int main()
 	shaderProgramID = LoadShaders("vertexshader.glsl", "fragmentshader.glsl");
 	skyboxShaderID = LoadShaders("cubemapVert.glsl", "cubemapFrag.glsl");
 	quadShaderID = LoadShaders("quadVert.glsl", "quadFrag.glsl");
+	blurShaderID = LoadShaders("quadVert.glsl", "blurshader.glsl");
 
 	//Register external intpu in GLFW
 	glfwSetKeyCallback(window, key_callback);
@@ -119,13 +129,15 @@ int main()
 	#pragma endregion
 
 	//Load ply-model
-	PLYModel plymodel("models/bunny.ply", false, false);
+	PLYModel plymodel("models/Armadillo.ply", false, false);
 
 	GLuint VBO, VAO, EBO;
 	mesh = new PLYDrawer(plymodel, VBO, VAO, EBO);
 
-	GLuint VBO_sphere, VAO_sphere, EBO_sphere;
-	SolidSphere sphere(0.5f, 100, 100, VBO_sphere, VAO_sphere, EBO_sphere);
+	//"Normalize" the model scale.
+	model = glm::scale(mat4(1.0f), vec3(1 / mesh->height, 1 / mesh->height, 1 / mesh->height));
+	//Center the model at origo.
+	model = glm::translate(model, vec3(0, -mesh->height / 2 - mesh->minPos.y, 0));
 
 	//Create cubemap
 	GLuint VBO_map, VAO_map, EBO_map;
@@ -133,6 +145,7 @@ int main()
 
 	//Create framebuffer
 	Framebuffer framebuffer(width, height);
+	Framebuffer framebufferBlur(width, height);
 
 	//Rendering commands here
 	glClearColor(0.4f, 0.4f, 0.4f, 1.0f);
@@ -164,10 +177,10 @@ int main()
 
 
 		//Use the skybox-shader.
-		glUseProgram(skyboxShaderID);
+		//glUseProgram(skyboxShaderID);
 		//RENDERING SKYBOX HERE
-		updateSkyboxUniforms();
-		skybox.drawCubeMap(skyboxShaderID);
+		//updateSkyboxUniforms();
+		//skybox.drawCubeMap(skyboxShaderID);
 
 
 		//Use the mesh-shader.
@@ -176,20 +189,53 @@ int main()
 		updateMeshUniforms();
 
 
-		if (drawSphere)
-			sphere.drawSphere(shaderProgramID, skybox.textures[maxRoughness], skybox.textures[roughness + 1]);
-		else
-			mesh->drawPlyModel(shaderProgramID, skybox.textures[maxRoughness], skybox.textures[roughness + 1]);
+		mesh->drawPlyModel(shaderProgramID, skybox.textures[maxRoughness], skybox.textures[roughness + 1]);
 
 
 		// Unbind framebuffer.
 		framebuffer.unbind();
+		// Bind the blurring framebuffer.
+		framebufferBlur.bind();
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
+		glUseProgram(quadShaderID);
+		vec3 cameraPos = (inverse(view))[3];
+		GLuint radiusLoc = glGetUniformLocation(quadShaderID, "radiusPixels");
+		glUniform1i(radiusLoc, sampleRadius);
+		GLuint nSamplesLoc = glGetUniformLocation(quadShaderID, "nSamples");
+		glUniform1f(nSamplesLoc, nSamples);
+		GLuint randomLoc = glGetUniformLocation(quadShaderID, "randomize");
+		glUniform1i(randomLoc, randomize);
+		GLint cameraPosLoc2 = glGetUniformLocation(quadShaderID, "cameraPos");
+		glUniform3f(cameraPosLoc2, cameraPos.x, cameraPos.y, cameraPos.z);
+		GLuint viewtransLoc2 = glGetUniformLocation(quadShaderID, "viewMatrix");
+		glUniformMatrix4fv(viewtransLoc2, 1, GL_FALSE, glm::value_ptr(view));
+		GLuint projectiontransLoc2 = glGetUniformLocation(quadShaderID, "perspective");
+		glUniformMatrix4fv(projectiontransLoc2, 1, GL_FALSE, glm::value_ptr(projection));
+
 		//Draw to quad.
 		framebuffer.drawToQuad(quadShaderID);
+
+
+		// Unbind the blurring framebuffer.
+		framebufferBlur.unbind();
+
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+		glUseProgram(blurShaderID);
+		GLuint radiusBlurLoc = glGetUniformLocation(blurShaderID, "blurRadius");
+		glUniform1i(radiusBlurLoc, blurRadius);
+		GLuint samplesBlurLoc = glGetUniformLocation(blurShaderID, "nSamples");
+		glUniform1f(samplesBlurLoc, blurSamples);
+		GLuint blurEnableLoc = glGetUniformLocation(blurShaderID, "enableBlur");
+		glUniform1i(blurEnableLoc, enableBlur);
+
+
+		framebufferBlur.drawToQuad(blurShaderID);
+
 
 		//Swap the buffers
 		glfwSwapBuffers(window);
@@ -220,12 +266,7 @@ int main()
 
 void updateMeshUniforms()
 {
-	glm::mat4 model = mat4(1.0f);
-	if (!drawSphere)
-		//"Normalize" the model scale.
-		model = glm::scale(mat4(1.0f), vec3(1/mesh->height, 1/mesh->height, 1/mesh->height));
-	//Center the model at origo.
-	model = glm::translate(model, vec3(0, -mesh->height/2 - mesh->minPos.y, 0));
+
 
 	vec3 cameraPos = (inverse(view))[3];
 
@@ -236,12 +277,6 @@ void updateMeshUniforms()
 	glUniformMatrix4fv(modeltransLoc1, 1, GL_FALSE, glm::value_ptr(model));
 	GLuint projectiontransLoc1 = glGetUniformLocation(shaderProgramID, "projectionMesh");
 	glUniformMatrix4fv(projectiontransLoc1, 1, GL_FALSE, glm::value_ptr(projection));
-	GLint fresnelRLoc = glGetUniformLocation(shaderProgramID, "fresnelR");
-	glUniform1f(fresnelRLoc, fresnelR);
-	GLint fresnelGLoc = glGetUniformLocation(shaderProgramID, "fresnelG");
-	glUniform1f(fresnelGLoc, fresnelG);
-	GLint fresnelBLoc = glGetUniformLocation(shaderProgramID, "fresnelB");
-	glUniform1f(fresnelBLoc, fresnelB);
 	GLint reflectionLoc = glGetUniformLocation(shaderProgramID, "reflection");
 	glUniform1i(reflectionLoc, reflection);
 	GLint cameraPosLoc1 = glGetUniformLocation(shaderProgramID, "cameraPos");
@@ -265,54 +300,86 @@ void updateSkyboxUniforms()
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
-	//By pressing D/S the user can make the model more diffuse/specular
-	if (key == GLFW_KEY_D && action == GLFW_PRESS && roughness < maxRoughness)
-		roughness++;
-	else if (key == GLFW_KEY_S && action == GLFW_PRESS && roughness > 0)
-		roughness--;
+	if (key == GLFW_KEY_UP)
+	{
+		sampleRadius++;
+		cout << "AO Sample radius = " << sampleRadius << endl;
+	}
+	else if (key == GLFW_KEY_DOWN)
+	{
+		if(sampleRadius > 1)
+			sampleRadius--;
+		cout << "AO Sample radius = " << sampleRadius << endl;
+	}
+	if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS)
+	{
+		nSamples++;
+		cout << "AO samples = " << nSamples * 4 << endl;
+	}
+	else if (key == GLFW_KEY_LEFT && action == GLFW_PRESS)
+	{
+		if (nSamples > 1)
+			nSamples--;
+		cout << "AO samples = " << nSamples * 4 << endl;
+	}
 
-	//By pressing W/E the user can decrease/increase the fresnel constant
-	if (key == GLFW_KEY_W)
+	if (key == GLFW_KEY_ENTER && action == GLFW_PRESS)
 	{
-		fresnelR -= 0.1f;
-		fresnelG -= 0.1f;
-		fresnelB -= 0.1f;
+		if (enableBlur == 0)
+		{
+			enableBlur = 1;
+			cout << "Blur enabled." << endl;
+		}
+		else
+		{
+			enableBlur = 0;
+			cout << "Blur disabled." << endl;
+		}
 	}
-	else if (key == GLFW_KEY_E)
+
+	if (key == GLFW_KEY_B && action == GLFW_PRESS)
 	{
-		fresnelR += 0.1f;
-		fresnelG += 0.1f;
-		fresnelB += 0.1f;
+		blurRadius++;
+		cout << "Blur kernel radius = " << blurRadius << endl;
 	}
-	//The following keys decrease/increase the separate fresnel constants for R, G and B.
-	if (key == GLFW_KEY_F)
-		fresnelR -= 0.1f;
-	else if (key == GLFW_KEY_R)
-		fresnelR += 0.1f;
-	if (key == GLFW_KEY_G)
-		fresnelG -= 0.1f;
-	else if (key == GLFW_KEY_T)
-		fresnelG += 0.1f;
-	if (key == GLFW_KEY_H)
-		fresnelB -= 0.1f;
-	else if (key == GLFW_KEY_Y)
-		fresnelB += 0.1f;
+	else if (key == GLFW_KEY_V && action == GLFW_PRESS)
+	{
+		if (blurRadius > 1)
+			blurRadius--;
+		cout << "Blur kernel radius = " << blurRadius << endl;
+	}
+	if (key == GLFW_KEY_H && action == GLFW_PRESS)
+	{
+		blurSamples++;
+		cout << "Blur samples in kernel = " << blurSamples * blurSamples << endl;
+	}
+	else if (key == GLFW_KEY_G && action == GLFW_PRESS)
+	{
+		if (blurSamples > 1)
+			blurSamples--;
+		cout << "Blur samples in kernel = " << blurSamples * blurSamples << endl;
+	}
+
+
+
+	if (key == GLFW_KEY_R && action == GLFW_PRESS)
+	{
+		if (randomize == 1)
+		{
+			randomize = 0;
+			cout << "Randomization of sampling direction: disabled" << endl;
+		}
+		else
+		{
+			randomize = 1;
+			cout << "Randomization of sampling direction: enabled" << endl;
+		}
+	}
 
 	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
-		if (reflection == 1)
-			reflection = 0;
-		else
-			reflection = 1;
-	if (key == GLFW_KEY_ENTER && action == GLFW_PRESS)
-		if (drawSphere)
-			drawSphere = false;
-		else
-			drawSphere = true;
-
-	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS)
 	{
 		wireframe++;
-		if (wireframe > 2)
+		if (wireframe == 3)
 			wireframe = 0;
 	}
 
@@ -326,6 +393,11 @@ static void cursor_position_callback(GLFWwindow* window, double xpos, double ypo
 {
 	if (leftMousePressed)
 	{
+		////Rotate around Y-axis
+		//model = rotate(model, (float)(xpos - mouseX) / 100, vec3(0.0f, 1.0f, 0.0f));
+
+
+
 		//Rotate around Y-axis
 		view = rotate(view, (float)(xpos - mouseX) / 100, vec3(0.0f, 1.0f, 0.0f));
 
@@ -344,6 +416,7 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
 	//Zoom in and out through scrolling
 	view = scale(view, vec3(1.0 + 0.1*yoffset));
+
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
