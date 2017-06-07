@@ -17,7 +17,7 @@ class PLYDrawer
 {
 public:
 	PLYDrawer(const PLYModel &ply, GLuint &VBO, GLuint &VAO, GLuint &EBO);
-	void drawPlyModel(GLuint shaderProgramID, GLuint diffuseTexID, GLuint specularTexID);
+	void drawPlyModel(GLuint shaderProgramID);
 	void computeNormals();
 	float width, height, depth;
 	vec3 minPos;

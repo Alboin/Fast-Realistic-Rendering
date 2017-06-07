@@ -27,12 +27,6 @@
     <ClCompile Include="PLYDrawer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CubeMap.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="SolidSphere.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Framebuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -47,9 +41,6 @@
     <ClInclude Include="PLYDrawer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CubeMap.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Framebuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -59,14 +50,6 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="vertexshader.glsl">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="fragmentshaderCubeMap.glsl" />
-    <None Include="vertexshaderCubeMap.glsl" />
-    <None Include="cubemapFrag.glsl">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="cubemapVert.glsl">
       <Filter>Resource Files</Filter>
     </None>
     <None Include="quadVert.glsl">

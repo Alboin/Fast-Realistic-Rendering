@@ -14,37 +14,30 @@ uniform sampler2D screenTexture;
 
 mat4 rotationMatrix(vec3 axis, float angle);
 highp float rand(vec2 co);
-//vec3 viewSpacePos(vec2 texCoords, float depth);
-//vec3 textureSpacePos(vec3 viewPos);
+
 
 void main()
 { 
-	// Calculate normal and depth from texture.
+	// Get normal and depth from texture.
 	vec4 colorVal = texture(screenTexture, TexCoords);
 	float depth = colorVal.w;
 	vec3 normal = vec3(colorVal);
-
-	////DEBUG
-	//color = vec4(vec3(depth), 1.0f);
-	//return;
-	//color = colorVal;
-	//return;
 	
-	// Set the background color to white.
-	//if(depth > 0.99f)
-	//{
-	//	color = vec4(1.0f);
-	//	return;
-	//}
+	//If the sample is part of the backgrond, we don't need to calculate the AO.
+	if(depth > 0.99f)
+	{
+		color = vec4(1.0f);
+		return;
+	}
 	
-	// Initiate sampling vectors.
+	// Initiate 4 sampling vectors.
 	vec2[4] sampleVectors;
 	sampleVectors[0] = normalize(vec2(0,1));
 	sampleVectors[1] = normalize(vec2(1,0));
 	sampleVectors[2] = normalize(vec2(0,-1));
 	sampleVectors[3] = normalize(vec2(-1,0));
 
-	// Set the radius and sample-length depending on the resolution of the image.
+	// Set the radius and sample-length depending on the resolution of the image and the number of samples defined by the user.
 	float windowResolution = 1000.0f;
 	float radius = (radiusPixels / windowResolution) / (depth * (5.0f - 0.1f));
 	float sampleLength = radius / nSamples;
@@ -65,77 +58,68 @@ void main()
 	// Loop through the sample vectors.
 	for(int i = 0; i < 4; i++)
 	{
-		//vec3 highestPointVec = vec3(TexCoords + sampleVectors[i] * radius, 1.0f - texture(screenTexture, TexCoords + sampleVectors[i] * radius).w);
-		//vec3 highestPointVec = vec3(TexCoords + sampleVectors[i] * sampleLength, 1.0f - texture(screenTexture, TexCoords + sampleVectors[i] * sampleLength).w);
 		vec3 highestPointVec = startPoint;
 		float sampleWeight = 1;
+		float ambientOcclusionOneRayWeighted = 0.0f; // Contains the AO for one sample-ray, with weight.
+
+		// Axises that represent the screens xyz in world coordinates.
+		vec3 zAxis = normalize(cameraPos);
+		vec3 xAxis = normalize(cross(vec3(0,1,0), zAxis));
+
+		// Get the normal and cameraPos in screenspace.
+		vec3 normalInScreenspace = normalize(vec3(dot(xAxis, normal), normal.y, dot(zAxis, normal)));
 		
+		// Compute tangent vector.
+		vec3 orthogonalToTangent = normalize(cross(vec3(0,0,1), vec3(sampleVectors[i], 0.0f)));
+		vec3 tangentVector = normalize(cross(orthogonalToTangent, normalInScreenspace));
+
+		// Compute tangent angle.
+		float tangentAngle = atan(tangentVector.z / length(tangentVector.xy));
+
+		// Initialize horizonAngle with the value of tangentAngle.
+		float horizonAngle = tangentAngle;
+
+		// Calculate the AO of the first sample-point, use it to initialize the weighted AO-sum.
+		float ambientOcclusionOneRay =  sin(horizonAngle) - sin(tangentAngle); //AO
+		ambientOcclusionOneRayWeighted +=  ambientOcclusionOneRay * sampleWeight; //WAO
+
+
 		// Walk along the vector.
 		for(float j = sampleLength; j < radius; j += sampleLength)
 		{
 			vec2 texturePos = TexCoords + sampleVectors[i] * j;
 			vec4 samplePoint = texture(screenTexture, texturePos);
-			
-			// If the sampled point is at a lower depth than the highest point, set it as new highest point.
-			if(1.0f - samplePoint.w > highestPointVec.z && abs(1.0f - samplePoint.w - highestPointVec.z) < 0.1f)
+			vec3 sampleVector = vec3(texturePos, 1.0f - samplePoint.w);
+
+			if(abs(sampleVector.z - startPoint.z) > radius / 2 || samplePoint.w > 0.99f)
+				continue; 
+
+			// If the horizonAngle of the sampled point is higher than the previous one, save it!
+			vec3 horizonVector = sampleVector - startPoint;
+			float sampledHorizonAngle = atan(horizonVector.z / length(horizonVector.xy));
+
+			if(sampledHorizonAngle > horizonAngle)
 			{
-				highestPointVec = vec3(texturePos, 1.0f - samplePoint.w);
-				sampleWeight = max(0.0f, 1.0f - (j / radius));
+				horizonAngle = sampledHorizonAngle;
+				sampleWeight = max(0.0f, 1.0f - pow((j / radius),2));
+				ambientOcclusionOneRayWeighted += sampleWeight * (sin(horizonAngle) - sin(tangentAngle) - ambientOcclusionOneRay);
+				ambientOcclusionOneRay =  sin(horizonAngle) - sin(tangentAngle);
 
-				vec3 horizontalVec = highestPointVec - startPoint;
-				float horizontalAngle = acos(dot(horizontalVec, vec3(horizontalVec.xy, 0.0f)));
-
-				////DEBUG
-				//color = vec4(normal, 1.0f);
-				//return;
-			}	
+			}
 		}
-
-		// Calculate the horizontal angle.
-		vec3 horizontalVec = highestPointVec - startPoint;
-		//// If no higher point was found, set the 
-		//if(distance(horizontalVec, startPoint) < 0.001f)
-		//	horizontalVec = startPoint;
-
-		//float horizontalAngle = atan(length(horizontalVec.z) / length(horizontalVec.xy));
-		float horizontalAngle = acos(dot(normalize(horizontalVec), normalize(vec3(horizontalVec.xy, 0.0f))));
-		// The horizontal angle should be signed.
-		if(horizontalVec.z < 0)
-			horizontalAngle = -horizontalAngle;
-
-		// Axises that represent the screens xyz in world coordinates.
-		vec3 yAxis = vec3(0,1,0);
-		vec3 zAxis = normalize(cameraPos);
-		vec3 xAxis = normalize(cross(yAxis, zAxis));
-
-		// Get the normal and cameraPos in screenspace.
-		vec3 normalInScreenspace = vec3(dot(xAxis, normal), dot(yAxis, normal), dot(zAxis, normal));
-		vec3 cameraInScreenspace = vec3(dot(xAxis, cameraPos), dot(yAxis, cameraPos), dot(zAxis, cameraPos));
-
-		vec3 temp = vec3(sampleVectors[i], 0) * dot(normalInScreenspace, vec3(sampleVectors[i], 0));
-		vec3 difference = sampleVectors[i] - vec3(normalInScreenspace.xy, 0);
-		vec3 alignedNormal = normalize(normalInScreenspace + difference);
-
-		//vec3 alignedNormal = normalize(normal + a);
-		float tangentialAngle = acos(dot(alignedNormal, normalize(cameraInScreenspace)));
-
-		
-		//ambientOcclusion += (1.0f / (2*3.14)) * (sin(horizontalAngle) - sin(tangentialAngle)) * sampleWeight;
-		horizontalAngle = max(horizontalAngle, 0);
-		ambientOcclusion += (sin(horizontalAngle) - sin(0)) * sampleWeight;
+		// Add the weighted sum of the sample-ray to the final AO.
+		ambientOcclusion += ambientOcclusionOneRayWeighted;
 
 	}
 
-	//ambientOcclusion = ambientOcclusion;
+	// Divide the result by the number of sample-vectors.
+	ambientOcclusion = ambientOcclusion / 4;
 
-	color = vec4(vec3(ambientOcclusion * 100 + 0.3f), 1.0f);
-	
-	////DEBUG
-	//if(ambientOcclusion < 0)
-	//	color = vec4(vec3(1.0f, 0.0f, 0.0f), 1.0f);
+	color = vec4(vec3(1.0f - ambientOcclusion), 1.0f);
 }
 
 // Function for creating a rotation matrix for rotation around a given axis and angle.
+// taken from http://www.neilmendoza.com/glsl-rotation-about-an-arbitrary-axis/
 mat4 rotationMatrix(vec3 axis, float angle)
 {
     axis = normalize(axis);
@@ -150,6 +134,7 @@ mat4 rotationMatrix(vec3 axis, float angle)
 }
 
 // Function for generating a random number depending on texture coordinates.
+// taken from http://byteblacksmith.com/improvements-to-the-canonical-one-liner-glsl-rand-for-opengl-es-2-0/
 highp float rand(vec2 co)
 {
     highp float a = 12.9898;
@@ -159,30 +144,3 @@ highp float rand(vec2 co)
     highp float sn= mod(dt,3.14);
     return fract(sin(sn) * c);
 }
-
-//vec3 viewSpacePos(vec2 texCoords, float depth)
-//{
-//	//vec3 temp = normalize(cameraPos) * (5.0f - 0.1f);
-//	//vec3 z = temp * depth;
-
-//	//return vec3((texCoords.x * 2.0f - 1.0f) / perspective[0][0], (texCoords.y * 2.0f - 1.0f) / perspective[1][1], 1.0f) * depth;
-
-//	vec3 temp = normalize(cameraPos) * (5.0f - 0.1f);
-//	return temp * depth;
-		
-//	//// Get x/w and y/w from the viewport position
-//	//float x = texCoords.x * 2 - 1;
-//	//float y = (1 - texCoords.y) * 2 - 1;
-//	//vec4 vProjectedPos = vec4(x, y, depth, 1.0f);
-//	//// Transform by the inverse projection matrix
-//	//vec4 vPositionVS = vProjectedPos * inverse(perspective);  
-//	//// Divide by w to get the view-space position
-//	//return vPositionVS.xyz / vPositionVS.w;  
-//}
-
-//vec3 textureSpacePos(vec3 viewPos)
-//{
-//	vec4 temp = vec4(viewPos, 1.0f) * perspective;
-//	// Convert from screenspace to texture-space
-//	return vec3(temp.x + 1.0f, temp.y + 1.0f, temp.z + 1.0f) / 2.0f;
-//}

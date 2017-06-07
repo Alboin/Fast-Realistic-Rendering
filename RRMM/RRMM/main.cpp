@@ -13,13 +13,10 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <math.h>
 
 #include "shaderLoader.h"
 #include "plyloader.h"
 #include "PLYDrawer.h"
-#include "CubeMap.h"
-#include "SolidSphere.cpp"
 #include "Framebuffer.h"
 
 #pragma endregion
@@ -32,15 +29,14 @@ using namespace std;
 glm::mat4 view;
 glm::mat4 model = mat4(1.0f);
 vec3 rotatedX = vec3(1, 0, 0);
-int sampleRadius = 1;
+int sampleRadius = 200;
 float nSamples = 10;
 int blurRadius = 3;
 int blurSamples = 4;
 int enableBlur = 0;
-int randomize = 0;
+int randomize = 1;
 glm::mat4 projection;
 GLuint shaderProgramID;
-GLuint skyboxShaderID;
 GLuint quadShaderID;
 GLuint blurShaderID;
 PLYDrawer *mesh;
@@ -67,7 +63,6 @@ static void cursor_position_callback(GLFWwindow* window, double xpos, double ypo
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void updateMeshUniforms();
-void updateSkyboxUniforms();
 
 
 int main()
@@ -78,7 +73,7 @@ int main()
 	int windowHeight = 1000;
 
 	//Starting position of camera
-	view = lookAt(vec3(0.0f, 0.0f, 2.0f), vec3(0, 0, 0), vec3(0, 1, 0));
+	view = lookAt(vec3(0.0f, 0.1f, 2.0f), vec3(0, 0, 0), vec3(0, 1, 0));
 	//Projection matrix
 	projection = glm::perspective(45.0f, (float)windowWidth / (float)windowHeight, 0.1f, 5.0f);
 
@@ -117,7 +112,6 @@ int main()
 
 	// Create and compile the GLSL program from the shaders
 	shaderProgramID = LoadShaders("vertexshader.glsl", "fragmentshader.glsl");
-	skyboxShaderID = LoadShaders("cubemapVert.glsl", "cubemapFrag.glsl");
 	quadShaderID = LoadShaders("quadVert.glsl", "quadFrag.glsl");
 	blurShaderID = LoadShaders("quadVert.glsl", "blurshader.glsl");
 
@@ -129,7 +123,11 @@ int main()
 	#pragma endregion
 
 	//Load ply-model
-	PLYModel plymodel("models/Bunny.ply", false, false);
+	string name;
+	cout << "Please type the name of a .ply-file to load (e.g. 'models/Armadillo.ply'): " << endl;
+	cin >> name;
+	const char * temp = name.c_str();
+	PLYModel plymodel(temp, false, false);
 
 	GLuint VBO, VAO, EBO;
 	mesh = new PLYDrawer(plymodel, VBO, VAO, EBO);
@@ -138,10 +136,8 @@ int main()
 	model = glm::scale(mat4(1.0f), vec3(1 / mesh->height, 1 / mesh->height, 1 / mesh->height));
 	//Center the model at origo.
 	model = glm::translate(model, vec3(0, -mesh->height / 2 - mesh->minPos.y, 0));
+	model = model * glm::rotate(3.14f, vec3(0.0f, 1.0f, 0.0f));
 
-	//Create cubemap
-	GLuint VBO_map, VAO_map, EBO_map;
-	CubeMap skybox(VBO_map, VAO_map, EBO_map, maxRoughness);
 
 	//Create framebuffer
 	Framebuffer framebuffer(width, height);
@@ -152,7 +148,6 @@ int main()
 	glEnable(GL_DEPTH_TEST);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glPointSize(5);
-	glEnable(GL_TEXTURE_CUBE_MAP);
 	//glDepthMask(GL_TRUE);
 
 
@@ -162,7 +157,6 @@ int main()
 		glfwPollEvents();
 		//Update mouse position
 		glfwGetCursorPos(window, &mouseX, &mouseY);
-		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// Draw to framebuffer
 		framebuffer.bind();
@@ -176,20 +170,13 @@ int main()
 			glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
 
 
-		//Use the skybox-shader.
-		//glUseProgram(skyboxShaderID);
-		//RENDERING SKYBOX HERE
-		//updateSkyboxUniforms();
-		//skybox.drawCubeMap(skyboxShaderID);
-
-
 		//Use the mesh-shader.
 		glUseProgram(shaderProgramID);
 		////RENDERING MESH HERE
 		updateMeshUniforms();
 
 
-		mesh->drawPlyModel(shaderProgramID, skybox.textures[maxRoughness], skybox.textures[roughness + 1]);
+		mesh->drawPlyModel(shaderProgramID);
 
 
 		// Unbind framebuffer.
@@ -280,26 +267,11 @@ void updateMeshUniforms()
 	glUniformMatrix4fv(modeltransLoc1, 1, GL_FALSE, glm::value_ptr(model));
 	GLuint projectiontransLoc1 = glGetUniformLocation(shaderProgramID, "projectionMesh");
 	glUniformMatrix4fv(projectiontransLoc1, 1, GL_FALSE, glm::value_ptr(projection));
-	GLint reflectionLoc = glGetUniformLocation(shaderProgramID, "reflection");
-	glUniform1i(reflectionLoc, reflection);
 	GLint cameraPosLoc1 = glGetUniformLocation(shaderProgramID, "cameraPos");
 	glUniform3f(cameraPosLoc1, cameraPos.x, cameraPos.y, cameraPos.z);
 }
 
-void updateSkyboxUniforms()
-{
-	glm::mat4 cubeModel = glm::scale(mat4(1.0f), vec3(10.0f));
-	cubeModel = rotate(cubeModel, 3.14f / 2.0f, vec3(0, 1, 0));
-	mat4 cubeView = mat4(mat3(view));
 
-	//Send all matrixes needed to cube shaders.
-	GLuint viewtransLoc2 = glGetUniformLocation(skyboxShaderID, "viewCube");
-	glUniformMatrix4fv(viewtransLoc2, 1, GL_FALSE, glm::value_ptr(cubeView));
-	GLuint modeltransLoc2 = glGetUniformLocation(skyboxShaderID, "modelCube");
-	glUniformMatrix4fv(modeltransLoc2, 1, GL_FALSE, glm::value_ptr(cubeModel));
-	GLuint projectiontransLoc2 = glGetUniformLocation(skyboxShaderID, "projectionCube");
-	glUniformMatrix4fv(projectiontransLoc2, 1, GL_FALSE, glm::value_ptr(projection));
-}
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
@@ -317,13 +289,13 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS)
 	{
 		nSamples++;
-		cout << "AO samples = " << nSamples * 4 << endl;
+		cout << "AO samples per sample-vector = " << nSamples << endl;
 	}
 	else if (key == GLFW_KEY_LEFT && action == GLFW_PRESS)
 	{
 		if (nSamples > 1)
 			nSamples--;
-		cout << "AO samples = " << nSamples * 4 << endl;
+		cout << "AO samples per sample-vector = " << nSamples << endl;
 	}
 
 	if (key == GLFW_KEY_ENTER && action == GLFW_PRESS)
@@ -351,12 +323,12 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			blurRadius--;
 		cout << "Blur kernel radius = " << blurRadius << endl;
 	}
-	if (key == GLFW_KEY_H && action == GLFW_PRESS)
+	if (key == GLFW_KEY_G && action == GLFW_PRESS)
 	{
 		blurSamples++;
 		cout << "Blur samples in kernel = " << blurSamples * blurSamples << endl;
 	}
-	else if (key == GLFW_KEY_G && action == GLFW_PRESS)
+	else if (key == GLFW_KEY_F && action == GLFW_PRESS)
 	{
 		if (blurSamples > 1)
 			blurSamples--;
@@ -396,10 +368,6 @@ static void cursor_position_callback(GLFWwindow* window, double xpos, double ypo
 {
 	if (leftMousePressed)
 	{
-		////Rotate around Y-axis
-		//model = rotate(model, (float)(xpos - mouseX) / 100, vec3(0.0f, 1.0f, 0.0f));
-
-
 
 		//Rotate around Y-axis
 		view = rotate(view, (float)(xpos - mouseX) / 100, vec3(0.0f, 1.0f, 0.0f));

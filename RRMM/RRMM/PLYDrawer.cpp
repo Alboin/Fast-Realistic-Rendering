@@ -21,11 +21,7 @@ PLYDrawer::PLYDrawer(const PLYModel &ply, GLuint &VBO, GLuint &VAO, GLuint &EBO)
 		// Vertex normal, filled with temporary value.
 		else if (i % 3 == 1)
 		{
-			//if (model.ifNormal)
-				//vboArray.push_back(model.normals[i / 3]);
-			//else
-				vboArray.push_back(vec3(0, 0, 0));
-
+			vboArray.push_back(vec3(0, 0, 0));
 		}
 		// Vertex color
 		else
@@ -115,28 +111,15 @@ PLYDrawer::PLYDrawer(const PLYModel &ply, GLuint &VBO, GLuint &VAO, GLuint &EBO)
 
 }
 
-void PLYDrawer::drawPlyModel(GLuint shaderProgramID, GLuint diffuseTexID, GLuint specularTexID)
+void PLYDrawer::drawPlyModel(GLuint shaderProgramID)
 {
 	glBindBuffer(GL_ARRAY_BUFFER, copyVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3)*vboArray.size(), &vboArray[0], GL_STATIC_DRAW);
-
-	//GLuint tex0 = glGetUniformLocation(shaderProgramID, "diffuseCube");
-	//glUniform1i(tex0, 0);
-	//GLuint tex1 = glGetUniformLocation(shaderProgramID, "specularCube");
-	//glUniform1i(tex1, 1);
-
-	//glActiveTexture(GL_TEXTURE0);
-	//glBindTexture(GL_TEXTURE_CUBE_MAP, diffuseTexID);
-	//glEnable(GL_TEXTURE_CUBE_MAP);
-	//glActiveTexture(GL_TEXTURE1);
-	//glEnable(GL_TEXTURE_CUBE_MAP);
-	//glBindTexture(GL_TEXTURE_CUBE_MAP, specularTexID);
 
 	glBindVertexArray(copyVAO);
 
 	glDrawElements(GL_TRIANGLES, sizeof(ivec3)*indices.size(), GL_UNSIGNED_INT, 0);
 	glBindVertexArray(0);
-	//glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 
 }
 
